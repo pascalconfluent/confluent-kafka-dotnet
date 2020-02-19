@@ -624,12 +624,14 @@ namespace Confluent.Kafka
 			TopicPartition topicPartition,
 			Message<TKey, TValue> message)
 		{
+			Headers headers = message.Headers ?? new Headers();
+
 			byte[] keyBytes;
 			try
 			{
 				keyBytes = (keySerializer != null)
-					? keySerializer.Serialize(message.Key, new SerializationContext(MessageComponentType.Key, topicPartition.Topic, message.Headers))
-					: await asyncKeySerializer.SerializeAsync(message.Key, new SerializationContext(MessageComponentType.Key, topicPartition.Topic, message.Headers)).ConfigureAwait(false);
+					? keySerializer.Serialize(message.Key, new SerializationContext(MessageComponentType.Key, topicPartition.Topic, headers))
+					: await asyncKeySerializer.SerializeAsync(message.Key, new SerializationContext(MessageComponentType.Key, topicPartition.Topic, headers)).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
@@ -647,8 +649,8 @@ namespace Confluent.Kafka
 			try
 			{
 				valBytes = (valueSerializer != null)
-					? valueSerializer.Serialize(message.Value, new SerializationContext(MessageComponentType.Value, topicPartition.Topic, message.Headers))
-					: await asyncValueSerializer.SerializeAsync(message.Value, new SerializationContext(MessageComponentType.Value, topicPartition.Topic, message.Headers)).ConfigureAwait(false);
+					? valueSerializer.Serialize(message.Value, new SerializationContext(MessageComponentType.Value, topicPartition.Topic, headers))
+					: await asyncValueSerializer.SerializeAsync(message.Value, new SerializationContext(MessageComponentType.Value, topicPartition.Topic, headers)).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
@@ -675,7 +677,7 @@ namespace Confluent.Kafka
 						topicPartition.Topic,
 						valBytes, 0, valBytes == null ? 0 : valBytes.Length,
 						keyBytes, 0, keyBytes == null ? 0 : keyBytes.Length,
-						message.Timestamp, topicPartition.Partition, message.Headers,
+						message.Timestamp, topicPartition.Partition, headers,
 						handler);
 
 					return await handler.Task.ConfigureAwait(false);
@@ -686,7 +688,7 @@ namespace Confluent.Kafka
 						topicPartition.Topic,
 						valBytes, 0, valBytes == null ? 0 : valBytes.Length,
 						keyBytes, 0, keyBytes == null ? 0 : keyBytes.Length,
-						message.Timestamp, topicPartition.Partition, message.Headers,
+						message.Timestamp, topicPartition.Partition, headers,
 						null);
 
 					var result = new DeliveryResult<TKey, TValue>
@@ -745,11 +747,13 @@ namespace Confluent.Kafka
 				throw new InvalidOperationException("A delivery handler was specified, but delivery reports are disabled.");
 			}
 
+			Headers headers = message.Headers ?? new Headers();
+
 			byte[] keyBytes;
 			try
 			{
 				keyBytes = (keySerializer != null)
-					? keySerializer.Serialize(message.Key, new SerializationContext(MessageComponentType.Key, topicPartition.Topic, message.Headers))
+					? keySerializer.Serialize(message.Key, new SerializationContext(MessageComponentType.Key, topicPartition.Topic, headers))
 					: throw new InvalidOperationException("Produce called with an IAsyncSerializer key serializer configured but an ISerializer is required.");
 			}
 			catch (Exception ex)
@@ -768,7 +772,7 @@ namespace Confluent.Kafka
 			try
 			{
 				valBytes = (valueSerializer != null)
-					? valueSerializer.Serialize(message.Value, new SerializationContext(MessageComponentType.Value, topicPartition.Topic, message.Headers))
+					? valueSerializer.Serialize(message.Value, new SerializationContext(MessageComponentType.Value, topicPartition.Topic, headers))
 					: throw new InvalidOperationException("Produce called with an IAsyncSerializer value serializer configured but an ISerializer is required.");
 			}
 			catch (Exception ex)
@@ -790,7 +794,7 @@ namespace Confluent.Kafka
 					valBytes, 0, valBytes == null ? 0 : valBytes.Length,
 					keyBytes, 0, keyBytes == null ? 0 : keyBytes.Length,
 					message.Timestamp, topicPartition.Partition,
-					message.Headers,
+					headers,
 					new TypedDeliveryHandlerShim_Action(
 						topicPartition.Topic,
 						enableDeliveryReportKey ? message.Key : default(TKey),
